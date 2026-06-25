@@ -1,8 +1,8 @@
 aiohttp~=3.13.2
-pyrogram==2.0.106
-TgCrypto
+kurigram~=2.2.22
+pytgcrypto~=1.2.11
 psutil~=7.2.1
 pymongo~=4.15.5
-py-tgcalls==2.1.0
+py-tgcalls~=2.2.8
 py-yt-search~=0.5.5
 python-dotenv~=1.2.1
