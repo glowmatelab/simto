@@ -1,5 +1,5 @@
 """
-Playback controls: /pause /resume /stop /end /restart
+Playback controls: /pause /resume /stop /end /restart /skip
 """
 
 import asyncio
@@ -121,7 +121,6 @@ async def restart_cmd(_, m: Message):
 
     status = await m.reply_text(f"🔄 **Restart kar raha hoon:** {song.title}", quote=False)
 
-    # Re-download if file missing
     if not song.file_path:
         song.file_path = await download_audio(song) or ""
 
@@ -130,7 +129,7 @@ async def restart_cmd(_, m: Message):
 
     try:
         from pytgcalls.types import AudioQuality, MediaStream
-        await call.client.change_stream(
+        await call.client.play(  # Fixed: change_stream → play
             m.chat.id,
             MediaStream(
                 song.file_path,
@@ -146,3 +145,56 @@ async def restart_cmd(_, m: Message):
         )
     except Exception as e:
         await status.edit_text(f"❌ Restart fail: {e}")
+
+
+# ── /skip ─────────────────────────────────────────────────────────────────────
+
+@app.on_message(filters.command("skip") & filters.group)
+async def skip_cmd(_, m: Message):
+    """Skip current song and play next in queue."""
+    try:
+        await m.delete()
+    except Exception:
+        pass
+
+    if not await _require_active(m):
+        return
+
+    next_song = queue.next_song(m.chat.id)
+
+    if next_song is None:
+        await call.stop(m.chat.id)
+        return await m.reply_text(
+            "⏭ **Skip kar diya!**\n"
+            "Queue mein aur koi song nahi — VC chhod diya.",
+            quote=False,
+        )
+
+    status = await m.reply_text(f"⏭ **Skip kar raha hoon...**", quote=False)
+
+    if not next_song.file_path:
+        next_song.file_path = await download_audio(next_song) or ""
+
+    if not next_song.file_path:
+        await status.edit_text(f"❌ Next song download nahi hua: **{next_song.title}** — dobara try karo.")
+        return
+
+    try:
+        from pytgcalls.types import AudioQuality, MediaStream
+        await call.client.play(
+            m.chat.id,
+            MediaStream(
+                next_song.file_path,
+                audio_parameters=AudioQuality.STUDIO,
+                video_flags=MediaStream.Flags.IGNORE,
+            ),
+        )
+        await db.set_playing(m.chat.id, True)
+        await status.edit_text(
+            f"⏭ **Skip! Ab chal raha hai:**\n\n"
+            f"🎧 {next_song.title}\n"
+            f"⏱ {next_song.duration}\n"
+            f"👤 {next_song.requester}"
+        )
+    except Exception as e:
+        await status.edit_text(f"❌ Skip fail: {e}")
