@@ -6,3 +6,4 @@ pymongo~=4.15.5
 py-tgcalls~=2.2.8
 py-yt-search~=0.5.5
 python-dotenv~=1.2.1
+git+https://github.com/KurimuzonAkuma/pyrogram.git
