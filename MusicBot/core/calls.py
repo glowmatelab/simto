@@ -114,7 +114,7 @@ class CallManager:
             if join_vc:
                 try:
                     await self.client.join_group_call(chat_id, stream)
-                except exceptions.AlreadyJoinedError:
+                except Exception:
                     await self.client.change_stream(chat_id, stream)
             else:
                 await self.client.change_stream(chat_id, stream)
