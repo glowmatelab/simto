@@ -1,6 +1,7 @@
 """
 CallManager — PyTgCalls wrapper.
 Stream end → auto-advance queue → cleanup old files.
+Compatible with py-tgcalls 2.2.x
 """
 
 import asyncio
@@ -60,7 +61,7 @@ class CallManager:
             await db.remove_call(chat_id)
             cleanup_downloads(keep_current_ids=[])
             try:
-                await self.client.leave_group_call(chat_id)
+                await self.client.leave_call(chat_id)  # Fixed: leave_group_call → leave_call
             except Exception:
                 pass
             try:
@@ -111,13 +112,8 @@ class CallManager:
                 audio_parameters=AudioQuality.STUDIO,
                 video_flags=MediaStream.Flags.IGNORE,
             )
-            if join_vc:
-                try:
-                    await self.client.join_group_call(chat_id, stream)
-                except Exception:
-                    await self.client.change_stream(chat_id, stream)
-            else:
-                await self.client.change_stream(chat_id, stream)
+            # In pytgcalls 2.2.x, play() handles both join and stream change
+            await self.client.play(chat_id, stream)
 
             await db.set_call(chat_id, userbot.me.id)
             return True
@@ -126,7 +122,8 @@ class CallManager:
             return False
 
     async def _change_stream(self, chat_id: int, file_path: str):
-        await self.client.change_stream(
+        # In pytgcalls 2.2.x, play() replaces both join_group_call and change_stream
+        await self.client.play(
             chat_id,
             MediaStream(
                 file_path,
@@ -137,14 +134,14 @@ class CallManager:
 
     async def pause(self, chat_id: int) -> bool:
         try:
-            await self.client.pause_stream(chat_id)
+            await self.client.pause(chat_id)  # Fixed: pause_stream → pause
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             return False
 
     async def resume(self, chat_id: int) -> bool:
         try:
-            await self.client.resume_stream(chat_id)
+            await self.client.resume(chat_id)  # Fixed: resume_stream → resume
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             return False
@@ -158,7 +155,7 @@ class CallManager:
         cleanup_downloads(keep_current_ids=[])
 
         try:
-            await self.client.leave_group_call(chat_id)
+            await self.client.leave_call(chat_id)  # Fixed: leave_group_call → leave_call
         except Exception:
             pass
         return True
