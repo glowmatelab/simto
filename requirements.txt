@@ -1,0 +1,19 @@
+# Telegram
+pyrogram==2.0.106
+TgCrypto
+
+# Voice calls
+py-tgcalls>=2.1.0
+
+# YouTube search (local, no API key)
+py-yt-search>=0.5.5
+
+# HTTP client for ShruthiBots API
+aiohttp~=3.13.2
+
+# Database
+pymongo[srv]
+
+# System
+psutil
+python-dotenv

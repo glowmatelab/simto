@@ -1,0 +1,1 @@
+# MusicBot core package
