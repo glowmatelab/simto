@@ -7,7 +7,7 @@ import asyncio
 import logging
 
 from ntgcalls import ConnectionNotFound
-from pytgcalls import PyTgCalls, exceptions
+from pytgcalls import PyTgCalls, exceptions, filters as tg_filters
 from pytgcalls.types import AudioQuality, MediaStream
 
 from config import Config
@@ -22,9 +22,9 @@ class CallManager:
     def setup(self, userbot):
         self._client = PyTgCalls(userbot)
 
-        @self._client.on_closed_voice_chat()
-        async def _on_end(chat_id: int, _update):
-            await self._handle_stream_end(chat_id)
+        @self._client.on_update(tg_filters.stream_end())
+        async def _on_end(client, update):
+            await self._handle_stream_end(update.chat_id)
 
     @property
     def client(self) -> PyTgCalls:
@@ -32,22 +32,18 @@ class CallManager:
             raise RuntimeError("CallManager.setup() not called yet.")
         return self._client
 
-    # ── Stream end ────────────────────────────────────────────────────────────
-
     async def _handle_stream_end(self, chat_id: int):
         from MusicBot import db, queue, app
         from MusicBot.helpers.youtube import download_audio, cleanup_downloads
 
         loop_mode = await db.get_loop(chat_id)
 
-        # Single track loop — replay current
         if loop_mode == 1:
             song = queue.current(chat_id)
             if song:
                 await self._change_stream(chat_id, song.file_path)
                 return
 
-        # Queue loop — rotate and replay
         elif loop_mode == 2:
             queue.rotate_for_loop(chat_id)
             song = queue.current(chat_id)
@@ -58,13 +54,10 @@ class CallManager:
                     await self._change_stream(chat_id, song.file_path)
                     return
 
-        # Normal — advance to next
         next_song = queue.next_song(chat_id)
 
         if next_song is None:
-            # Queue empty — leave VC
             await db.remove_call(chat_id)
-            # Keep current songs' files, clean rest
             cleanup_downloads(keep_current_ids=[])
             try:
                 await self.client.leave_group_call(chat_id)
@@ -76,7 +69,6 @@ class CallManager:
                 pass
             return
 
-        # Download next if needed
         if not next_song.file_path:
             next_song.file_path = await download_audio(next_song) or ""
 
@@ -90,7 +82,6 @@ class CallManager:
 
         await self._change_stream(chat_id, next_song.file_path)
 
-        # Clean files not in current queue
         active_ids = [s.id for s in queue.all_songs(chat_id)]
         cleanup_downloads(keep_current_ids=active_ids)
 
@@ -104,8 +95,6 @@ class CallManager:
             )
         except Exception:
             pass
-
-    # ── Public API ────────────────────────────────────────────────────────────
 
     async def play(self, chat_id: int, song, join_vc: bool = True) -> bool:
         from MusicBot import db, userbot
