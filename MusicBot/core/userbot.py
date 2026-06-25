@@ -1,4 +1,4 @@
-from pyrogram import Client
+from kurigram import Client  # pyrogram ki jagah yeh
 from config import Config
 
 
