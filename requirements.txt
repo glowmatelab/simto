@@ -1,5 +1,4 @@
 kurigram~=2.2.22
-TgCrypto
 py-tgcalls~=2.2.8
 ntgcalls
 py-yt-search>=0.5.5
