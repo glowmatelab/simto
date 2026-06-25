@@ -1,4 +1,5 @@
-from pyrogram import Client
+# from pyrogram import Client  →  change to:
+from kurigram import Client
 from config import Config
 
 
