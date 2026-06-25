@@ -22,8 +22,8 @@ class CallManager:
     def setup(self, userbot):
         self._client = PyTgCalls(userbot)
 
-        @self._client.on_stream_end()
-        async def _on_end(chat_id: int, _update):
+        @self._client.on_closed_voice_chat()
+            async def _on_end(chat_id: int, _update):
             await self._handle_stream_end(chat_id)
 
     @property
