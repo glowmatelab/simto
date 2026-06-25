@@ -3,6 +3,6 @@ pyrogram==2.0.106
 TgCrypto
 psutil~=7.2.1
 pymongo~=4.15.5
-py-tgcalls~=2.2.8
+py-tgcalls==2.1.0
 py-yt-search~=0.5.5
 python-dotenv~=1.2.1
