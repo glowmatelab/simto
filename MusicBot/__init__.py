@@ -36,7 +36,7 @@ from MusicBot.core.bot import Bot
 app = Bot()
 
 # ── Pyrogram Userbot ──────────────────────────────────────────────────────────
-from MusicBot.core.userbot import UserBot
+from MusicBot.core.userbot import create_userbot
 userbot = create_userbot()
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
