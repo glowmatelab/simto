@@ -35,7 +35,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
 
     try:
         await m.reply_text(
-            f"⏳ Adding <code>@{userbot.me.username}</code> to the group...",
+            f"⏳ Adding Assistant to the group...",
             quote=False,
             parse_mode=ParseMode.HTML,
         )
@@ -46,7 +46,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
     except ChatAdminRequired:
         await m.reply_text(
             f"❌ Assistant ko group mein add karne ka permission nahi.\n"
-            f"Manually add karo: <code>@{userbot.me.username}</code>",
+            f"Manually add karo ya fir mujhe permisssion do",
             quote=False,
             parse_mode=ParseMode.HTML,
         )
