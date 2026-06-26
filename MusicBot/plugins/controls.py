@@ -6,6 +6,7 @@ import asyncio
 import logging
 
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from pyrogram.types import Message
 
 from MusicBot import app, db, queue, call
@@ -15,14 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 async def _require_active(m: Message) -> bool:
-    """Returns True if there's an active call, else sends error and returns False."""
     if not await db.get_call(m.chat.id):
-        await m.reply_text("❌ Abhi kuch nahi chal raha!", quote=False)
+        await m.reply_text("❌ Nothing is playing right now.", quote=False)
         return False
     return True
 
-
-# ── /pause ────────────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command("pause") & filters.group)
 async def pause_cmd(_, m: Message):
@@ -35,21 +33,19 @@ async def pause_cmd(_, m: Message):
         return
 
     if not await db.is_playing(m.chat.id):
-        return await m.reply_text("⏸ Pehle se pause hai!", quote=False)
+        return await m.reply_text("⏸ Already paused.", quote=False)
 
     ok = await call.pause(m.chat.id)
     if ok:
         await db.set_playing(m.chat.id, False)
         await m.reply_text(
-            f"⏸ **Pause kar diya**\n"
-            f"Resume karne ke liye: /resume",
+            "<blockquote>⏸ Paused\n› /resume to continue</blockquote>",
             quote=False,
+            parse_mode=ParseMode.HTML,
         )
     else:
-        await m.reply_text("❌ Pause nahi ho paya.", quote=False)
+        await m.reply_text("❌ Failed to pause.", quote=False)
 
-
-# ── /resume ───────────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command("resume") & filters.group)
 async def resume_cmd(_, m: Message):
@@ -62,21 +58,23 @@ async def resume_cmd(_, m: Message):
         return
 
     if await db.is_playing(m.chat.id):
-        return await m.reply_text("▶️ Pehle se chal raha hai!", quote=False)
+        return await m.reply_text("▶️ Already playing.", quote=False)
 
     ok = await call.resume(m.chat.id)
     if ok:
         await db.set_playing(m.chat.id, True)
         song = queue.current(m.chat.id)
-        text = "▶️ **Resume ho gaya!**"
+        text = "▶️ Resumed"
         if song:
-            text += f"\n🎵 {song.title}"
-        await m.reply_text(text, quote=False)
+            text += f"\n› {song.title}"
+        await m.reply_text(
+            f"<blockquote>{text}</blockquote>",
+            quote=False,
+            parse_mode=ParseMode.HTML,
+        )
     else:
-        await m.reply_text("❌ Resume nahi ho paya.", quote=False)
+        await m.reply_text("❌ Failed to resume.", quote=False)
 
-
-# ── /stop & /end ──────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop_cmd(_, m: Message):
@@ -91,9 +89,9 @@ async def stop_cmd(_, m: Message):
     await call.stop(m.chat.id)
 
     sent = await m.reply_text(
-        "⏹ **Playback band kar diya.**\n"
-        "Queue clear ho gayi. VC chhod diya.",
+        "<blockquote>⏹ Stopped\n› Queue cleared · Left voice chat</blockquote>",
         quote=False,
+        parse_mode=ParseMode.HTML,
     )
     await asyncio.sleep(5)
     try:
@@ -102,11 +100,8 @@ async def stop_cmd(_, m: Message):
         pass
 
 
-# ── /restart ──────────────────────────────────────────────────────────────────
-
 @app.on_message(filters.command("restart") & filters.group)
 async def restart_cmd(_, m: Message):
-    """Restart the current song from beginning."""
     try:
         await m.delete()
     except Exception:
@@ -117,19 +112,26 @@ async def restart_cmd(_, m: Message):
 
     song = queue.current(m.chat.id)
     if not song:
-        return await m.reply_text("❌ Queue empty hai!", quote=False)
+        return await m.reply_text("❌ Queue is empty.", quote=False)
 
-    status = await m.reply_text(f"🔄 **Restart kar raha hoon:** {song.title}", quote=False)
+    status = await m.reply_text(
+        f"<blockquote>🔄 Restarting...\n› {song.title}</blockquote>",
+        quote=False,
+        parse_mode=ParseMode.HTML,
+    )
 
     if not song.file_path:
         song.file_path = await download_audio(song) or ""
 
     if not song.file_path:
-        return await status.edit_text("❌ File nahi mili. /play dobara try karo.")
+        return await status.edit_text(
+            "❌ File not found. Try /play again.",
+            parse_mode=ParseMode.HTML,
+        )
 
     try:
         from pytgcalls.types import AudioQuality, MediaStream
-        await call.client.play(  # Fixed: change_stream → play
+        await call.client.play(
             m.chat.id,
             MediaStream(
                 song.file_path,
@@ -139,19 +141,15 @@ async def restart_cmd(_, m: Message):
         )
         await db.set_playing(m.chat.id, True)
         await status.edit_text(
-            f"🔄 **Restart hua!**\n"
-            f"🎵 {song.title}\n"
-            f"⏱ {song.duration}"
+            f"<blockquote>🔄 Restarted\n› {song.title}  ·  {song.duration}</blockquote>",
+            parse_mode=ParseMode.HTML,
         )
     except Exception as e:
-        await status.edit_text(f"❌ Restart fail: {e}")
+        await status.edit_text(f"❌ Restart failed: <code>{e}</code>", parse_mode=ParseMode.HTML)
 
-
-# ── /skip ─────────────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command("skip") & filters.group)
 async def skip_cmd(_, m: Message):
-    """Skip current song and play next in queue."""
     try:
         await m.delete()
     except Exception:
@@ -165,19 +163,25 @@ async def skip_cmd(_, m: Message):
     if next_song is None:
         await call.stop(m.chat.id)
         return await m.reply_text(
-            "⏭ **Skip kar diya!**\n"
-            "Queue mein aur koi song nahi — VC chhod diya.",
+            "<blockquote>⏭ Skipped\n› Queue is empty · Left voice chat</blockquote>",
             quote=False,
+            parse_mode=ParseMode.HTML,
         )
 
-    status = await m.reply_text(f"⏭ **Skip kar raha hoon...**", quote=False)
+    status = await m.reply_text(
+        "<blockquote>⏭ Skipping...</blockquote>",
+        quote=False,
+        parse_mode=ParseMode.HTML,
+    )
 
     if not next_song.file_path:
         next_song.file_path = await download_audio(next_song) or ""
 
     if not next_song.file_path:
-        await status.edit_text(f"❌ Next song download nahi hua: **{next_song.title}** — dobara try karo.")
-        return
+        return await status.edit_text(
+            f"❌ Download failed: <code>{next_song.title}</code>",
+            parse_mode=ParseMode.HTML,
+        )
 
     try:
         from pytgcalls.types import AudioQuality, MediaStream
@@ -191,10 +195,8 @@ async def skip_cmd(_, m: Message):
         )
         await db.set_playing(m.chat.id, True)
         await status.edit_text(
-            f"⏭ **Skip! Ab chal raha hai:**\n\n"
-            f"🎧 {next_song.title}\n"
-            f"⏱ {next_song.duration}\n"
-            f"👤 {next_song.requester}"
+            f"<blockquote>⏭ Now Playing\n› {next_song.title}  ·  {next_song.duration}  ·  {next_song.requester}</blockquote>",
+            parse_mode=ParseMode.HTML,
         )
     except Exception as e:
-        await status.edit_text(f"❌ Skip fail: {e}")
+        await status.edit_text(f"❌ Skip failed: <code>{e}</code>", parse_mode=ParseMode.HTML)
