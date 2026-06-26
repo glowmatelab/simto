@@ -121,7 +121,7 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 <blockquote>{song.title}\n› Downloading...</blockquote>",
+            f"🎵ɴᴏᴡ ᴘʟᴀʏɪɴɢ <blockquote>{song.title}\n› Downloading...</blockquote>",
             parse_mode=ParseMode.HTML,
         )
 
