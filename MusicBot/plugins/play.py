@@ -39,8 +39,6 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
             quote=False,
             parse_mode=ParseMode.HTML,
         )
-        # ✅ FIX: app (bot) nahi, userbot (user account) se add karo
-        # Bots InviteToChannel use nahi kar sakte — sirf users kar sakte hain
         await userbot.add_chat_members(chat_id, userbot.me.id)
         return True
     except UserAlreadyParticipant:
@@ -132,7 +130,7 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 <blockquote>{song.title}\n› Downloading...</blockquote>",
+            f"🎵 sᴄᴀɴɴɪɴɢ . . . <blockquote>{song.title}\n› Downloading...</blockquote>",
             parse_mode=ParseMode.HTML,
         )
 
@@ -154,7 +152,7 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 sᴄᴀɴɴɪɴɢ . . .<blockquote>{song.title}\n› {song.duration} · {first_name}</blockquote>",
+            f"🎵 ɴᴏᴡ ᴘʟᴀʏɪɴɢ<blockquote>{song.title}\n› {song.duration} · {first_name}</blockquote>",
             parse_mode=ParseMode.HTML,
         )
 
@@ -167,6 +165,6 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 ɴᴏᴡ ᴘʟᴀʏɪɴɢ <blockquote>{song.title}\n› #{pos} · {first_name}</blockquote>",
+            f"🎵  <blockquote>{song.title}\n› #{pos} · {first_name}</blockquote>",
             parse_mode=ParseMode.HTML,
         )
