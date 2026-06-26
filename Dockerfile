@@ -19,4 +19,7 @@ RUN mkdir -p downloads
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
+# Render uses PORT env var — expose it
+EXPOSE 8080
+
 CMD ["python", "-m", "MusicBot"]
