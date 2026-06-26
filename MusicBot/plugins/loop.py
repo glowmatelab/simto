@@ -3,6 +3,7 @@
 """
 
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 from pyrogram.types import Message
 
 from MusicBot import app, db
@@ -16,16 +17,17 @@ async def loop_cmd(_, m: Message):
         pass
 
     chat_id = m.chat.id
-    current = await db.get_loop(chat_id)
-
-    # Cycle: 0 → 1 → 2 → 0
-    new_mode = (current + 1) % 3
+    new_mode = (await db.get_loop(chat_id) + 1) % 3
     await db.set_loop(chat_id, new_mode)
 
     mode_text = {
-        0: "➡️ **Loop OFF**\nSongs ek baar bajenge aur queue aage badh jaayegi.",
-        1: "🔂 **Loop: Single Track**\nCurrent song baar baar bajega.",
-        2: "🔁 **Loop: Queue**\nPoori queue loop hogi.",
+        0: "⏹ Loop Off\n› Songs will play once and stop.",
+        1: "🔂 Single Loop\n› Current song will repeat.",
+        2: "🔁 Queue Loop\n› Entire queue will repeat.",
     }
 
-    await m.reply_text(mode_text[new_mode], quote=False)
+    await m.reply_text(
+        f"<blockquote>{mode_text[new_mode]}</blockquote>",
+        quote=False,
+        parse_mode=ParseMode.HTML,
+    )
