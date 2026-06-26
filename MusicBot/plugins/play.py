@@ -5,7 +5,7 @@
 import logging
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
+from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import UserAlreadyParticipant, UserNotParticipant, ChatAdminRequired, PeerIdInvalid
 from pyrogram.types import Message
 
@@ -23,8 +23,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
         member = await app.get_chat_member(chat_id, userbot.me.id)
         if member.status in (ChatMemberStatus.BANNED, ChatMemberStatus.RESTRICTED):
             await m.reply_text(
-                "❌ Assistant is banned in this group.\n"
-                "Please unban and try again.",
+                "❌ Assistant is banned in this group.\nPlease unban and try again.",
                 quote=False,
             )
             return False
@@ -38,7 +37,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
         await m.reply_text(
             f"⏳ Adding <code>@{userbot.me.username}</code> to the group...",
             quote=False,
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
         await app.add_chat_members(chat_id, userbot.me.id)
         return True
@@ -48,14 +47,14 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
         await m.reply_text(
             f"❌ Make the bot an admin so it can add <code>@{userbot.me.username}</code>.",
             quote=False,
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
         return False
     except PeerIdInvalid:
         await m.reply_text(
             f"❌ Please add <code>@{userbot.me.username}</code> to the group manually.",
             quote=False,
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
         return False
     except Exception as e:
@@ -63,7 +62,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
         await m.reply_text(
             f"❌ Please add <code>@{userbot.me.username}</code> to the group manually.",
             quote=False,
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
         return False
 
@@ -79,7 +78,7 @@ async def play_cmd(_, m: Message):
         return await m.reply_text(
             "❌ Usage: <code>/play &lt;song name or YouTube link&gt;</code>",
             quote=False,
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
 
     query = " ".join(m.command[1:])
@@ -92,18 +91,21 @@ async def play_cmd(_, m: Message):
     status = await m.reply_text(
         f"🔍 <blockquote>{query}</blockquote>",
         quote=False,
-        parse_mode="html",
+        parse_mode=ParseMode.HTML,
     )
 
     song = await search_youtube(query)
     if not song:
-        return await status.edit_text("❌ No results found. Please try again.", parse_mode="html")
+        return await status.edit_text(
+            "❌ No results found. Please try again.",
+            parse_mode=ParseMode.HTML,
+        )
 
     if not song.is_live and song.duration_sec > Config.DURATION_LIMIT:
         limit_min = Config.DURATION_LIMIT // 60
         return await status.edit_text(
             f"❌ Song exceeds the duration limit of {limit_min} min.",
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
 
     song.requester = first_name
@@ -115,18 +117,21 @@ async def play_cmd(_, m: Message):
         if pos is None:
             return await status.edit_text(
                 f"❌ Queue is full! Max {Config.QUEUE_LIMIT} songs.",
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,
             )
 
         await status.edit_text(
             f"🎵 <blockquote>{song.title}\n› Downloading...</blockquote>",
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
 
         song.file_path = await download_audio(song) or ""
         if not song.file_path:
             queue.clear(chat_id)
-            return await status.edit_text("❌ Download failed. Please try again.", parse_mode="html")
+            return await status.edit_text(
+                "❌ Download failed. Please try again.",
+                parse_mode=ParseMode.HTML,
+            )
 
         ok = await call.play(chat_id, song, join_vc=True)
         if not ok:
@@ -134,12 +139,12 @@ async def play_cmd(_, m: Message):
             return await status.edit_text(
                 "❌ Failed to join voice chat.\n"
                 "Make sure the assistant has Manage Voice Chats permission.",
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,
             )
 
         await status.edit_text(
             f"🎵 <blockquote>{song.title}\n› {song.duration} · {first_name}</blockquote>",
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
 
     else:
@@ -147,10 +152,10 @@ async def play_cmd(_, m: Message):
         if pos is None:
             return await status.edit_text(
                 f"❌ Queue is full! Max {Config.QUEUE_LIMIT} songs.",
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,
             )
 
         await status.edit_text(
             f"🎵 <blockquote>{song.title}\n› #{pos} · {first_name}</blockquote>",
-            parse_mode="html",
+            parse_mode=ParseMode.HTML,
         )
