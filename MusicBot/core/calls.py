@@ -8,6 +8,7 @@ import asyncio
 import logging
 
 from ntgcalls import ConnectionNotFound
+from pyrogram.enums import ParseMode
 from pytgcalls import PyTgCalls, exceptions, filters as tg_filters
 from pytgcalls.types import AudioQuality, MediaStream
 
@@ -61,11 +62,15 @@ class CallManager:
             await db.remove_call(chat_id)
             cleanup_downloads(keep_current_ids=[])
             try:
-                await self.client.leave_call(chat_id)  # Fixed: leave_group_call → leave_call
+                await self.client.leave_call(chat_id)
             except Exception:
                 pass
             try:
-                await app.send_message(chat_id, "⏹ Queue khatam — VC se nikal gaya.")
+                await app.send_message(
+                    chat_id,
+                    "⏹ <blockquote>Queue finished — Left the voice chat.</blockquote>",
+                    parse_mode=ParseMode.HTML,
+                )
             except Exception:
                 pass
             return
@@ -75,7 +80,11 @@ class CallManager:
 
         if not next_song.file_path:
             try:
-                await app.send_message(chat_id, f"❌ Download fail: **{next_song.title}** — skip.")
+                await app.send_message(
+                    chat_id,
+                    f"❌ <blockquote>Download failed: {next_song.title} — Skipping.</blockquote>",
+                    parse_mode=ParseMode.HTML,
+                )
             except Exception:
                 pass
             await self._handle_stream_end(chat_id)
@@ -89,10 +98,8 @@ class CallManager:
         try:
             await app.send_message(
                 chat_id,
-                f"🎵 **Ab chal raha hai:**\n\n"
-                f"🎧 {next_song.title}\n"
-                f"⏱ {next_song.duration}\n"
-                f"👤 {next_song.requester}"
+                f"🎵 <blockquote>{next_song.title}\n› {next_song.duration} · {next_song.requester}</blockquote>",
+                parse_mode=ParseMode.HTML,
             )
         except Exception:
             pass
@@ -112,9 +119,7 @@ class CallManager:
                 audio_parameters=AudioQuality.STUDIO,
                 video_flags=MediaStream.Flags.IGNORE,
             )
-            # In pytgcalls 2.2.x, play() handles both join and stream change
             await self.client.play(chat_id, stream)
-
             await db.set_call(chat_id, userbot.me.id)
             return True
         except Exception as e:
@@ -122,7 +127,6 @@ class CallManager:
             return False
 
     async def _change_stream(self, chat_id: int, file_path: str):
-        # In pytgcalls 2.2.x, play() replaces both join_group_call and change_stream
         await self.client.play(
             chat_id,
             MediaStream(
@@ -134,14 +138,14 @@ class CallManager:
 
     async def pause(self, chat_id: int) -> bool:
         try:
-            await self.client.pause(chat_id)  # Fixed: pause_stream → pause
+            await self.client.pause(chat_id)
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             return False
 
     async def resume(self, chat_id: int) -> bool:
         try:
-            await self.client.resume(chat_id)  # Fixed: resume_stream → resume
+            await self.client.resume(chat_id)
             return True
         except (ConnectionNotFound, exceptions.NotInCallError):
             return False
@@ -155,7 +159,7 @@ class CallManager:
         cleanup_downloads(keep_current_ids=[])
 
         try:
-            await self.client.leave_call(chat_id)  # Fixed: leave_group_call → leave_call
+            await self.client.leave_call(chat_id)
         except Exception:
             pass
         return True
