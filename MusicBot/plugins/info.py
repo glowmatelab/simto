@@ -1,7 +1,3 @@
-"""
-/start  /help  /ping
-"""
-
 import time
 import logging
 
@@ -15,10 +11,11 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-# ── Replace with your actual image URLs ───────────────────────────────────────
+# ── Banners ──────────────────────────────────────────────────────────────────
 START_BANNER = "https://drive.google.com/uc?id=15mcuSKZX-1KaTMPhd_R0RT4gRZk_ZEEZ"
 HELP_BANNER  = "https://drive.google.com/uc?id=1Ta5EPBa1lg4silBXrwhUENso9eopwoE3"
 
+# ── Buttons ──────────────────────────────────────────────────────────────────
 BUTTONS = InlineKeyboardMarkup([
     [
         InlineKeyboardButton("➕ Add to Group", url="https://t.me/noisefreebot?startgroup=true"),
@@ -26,17 +23,34 @@ BUTTONS = InlineKeyboardMarkup([
     ]
 ])
 
-HELP_TEXT = """<blockquote>🎵 <b>NoiseFree — Commands</b>
+# ── Clean, Spaced Out Premium UI ──────────────────────────────────────────────
+START_TEXT = """<blockquote>🎵 <b>Welcome to NoiseFree Music</b>
 
-▸ /play &lt;song or link&gt;
-▸ /pause  ·  /resume
-▸ /stop  ·  /skip  ·  /restart
-▸ /loop — off → single → queue
-▸ /queue — view current queue
-▸ /ping — bot status
+The simplest, no-nonsense music bot on Telegram. Built purely for high-quality audio without any clutter or forced ads.
 
-⏱ Duration limit: {dl} min
-📋 Queue limit: {ql} songs per group</blockquote>"""
+✨ <b>Why Choose Us?</b>
+• <b>Pure Sound:</b> Crystal clear, lag-free streaming.
+• <b>Zero Trash:</b> No complex setups or promotional spam.
+• <b>Lightweight:</b> Ultra-fast and highly responsive.
+
+› Type <b>/help</b> to view the control layout.</blockquote>"""
+
+HELP_TEXT = """<blockquote>🛠 <b>NOISEFREE CONTROL PANEL</b>
+──────────────────────────
+🔮 <b>Core Playback</b>
+▸ <code>/play [track/link]</code> — Stream any audio source
+▸ <code>/pause</code>   · <code>/resume</code> — Toggle current stream
+▸ <code>/stop</code>    · <code>/skip</code>   — Terminate or skip tracks
+▸ <code>/restart</code>          — Re-initialize the stream
+
+⚙️ <b>Session Management</b>
+▸ <code>/loop</code>   — Toggle playback loop parameters
+▸ <code>/queue</code>  — View current track lineup status
+▸ <code>/ping</code>   — Diagnose real-time core latency
+──────────────────────────
+📊 <b>System Configuration</b>
+⚡ Limit: <code>{dl} mins per track</code>
+📦 Stack: <code>{ql} slots allowed</code></blockquote>"""
 
 
 def _human_time(seconds: int) -> str:
@@ -61,7 +75,7 @@ async def start_cmd(_, m: Message):
     if m.chat.type.value == "private":
         await m.reply_photo(
             photo=START_BANNER,
-            caption=HELP_TEXT.format(ql=Config.QUEUE_LIMIT, dl=Config.DURATION_LIMIT // 60),
+            caption=START_TEXT,
             reply_markup=BUTTONS,
             parse_mode=ParseMode.HTML,
             quote=False,
