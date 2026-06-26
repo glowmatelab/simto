@@ -121,7 +121,7 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵ɴᴏᴡ ᴘʟᴀʏɪɴɢ <blockquote>{song.title}\n› Downloading...</blockquote>",
+            f"🎵 <blockquote>{song.title}\n› Downloading...</blockquote>",
             parse_mode=ParseMode.HTML,
         )
 
@@ -143,7 +143,7 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 <blockquote>{song.title}\n› {song.duration} · {first_name}</blockquote>",
+            f"🎵 sᴄᴀɴɴɪɴɢ . . .<blockquote>{song.title}\n› {song.duration} · {first_name}</blockquote>",
             parse_mode=ParseMode.HTML,
         )
 
@@ -156,6 +156,6 @@ async def play_cmd(_, m: Message):
             )
 
         await status.edit_text(
-            f"🎵 <blockquote>{song.title}\n› #{pos} · {first_name}</blockquote>",
+            f"🎵 ɴᴏᴡ ᴘʟᴀʏɪɴɢ <blockquote>{song.title}\n› #{pos} · {first_name}</blockquote>",
             parse_mode=ParseMode.HTML,
         )
