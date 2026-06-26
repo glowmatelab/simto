@@ -1,17 +1,49 @@
 """
 Entry point — starts bot + userbot + PyTgCalls.
 Run: python -m MusicBot
+
+Render Web Service fix:
+  Render expects an HTTP port to be open or it marks the service as failed.
+  We run a tiny aiohttp health server on $PORT (default 8080) alongside the bot.
 """
 
 import asyncio
 import logging
+import os
 import signal
+
+from aiohttp import web
 
 from MusicBot import app, userbot, call, db, logger
 
 
+# ── Health-check HTTP server (for Render) ─────────────────────────────────────
+
+async def _health(request):
+    return web.Response(text="OK")
+
+
+async def start_health_server():
+    """Start a minimal HTTP server so Render's port scan succeeds."""
+    port = int(os.getenv("PORT", "8080"))
+    srv_app = web.Application()
+    srv_app.router.add_get("/", _health)
+    srv_app.router.add_get("/health", _health)
+    runner = web.AppRunner(srv_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"✅ Health server running on port {port}")
+    return runner
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 async def main():
     logger.info("🚀 MusicBot starting...")
+
+    # Start health server first so Render marks service as live
+    health_runner = await start_health_server()
 
     # Connect to MongoDB
     await db.connect()
@@ -57,6 +89,7 @@ async def main():
     except Exception:
         pass
     await db.close()
+    await health_runner.cleanup()
     logger.info("✅ Shutdown complete.")
 
 
