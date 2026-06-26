@@ -68,7 +68,7 @@ class CallManager:
             try:
                 await app.send_message(
                     chat_id,
-                    "⏹ <blockquote>Queue finished — Left the voice chat.</blockquote>",
+                    "<b>Playback Done • Left Voice Stream</b>",
                     parse_mode=ParseMode.HTML,
                 )
             except Exception:
