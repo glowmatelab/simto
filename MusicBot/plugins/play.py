@@ -6,13 +6,86 @@ import asyncio
 import logging
 
 from pyrogram import filters
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import UserAlreadyParticipant, UserNotParticipant, ChatAdminRequired, PeerIdInvalid
 from pyrogram.types import Message
 
-from MusicBot import app, db, queue, call
+from MusicBot import app, db, queue, call, userbot
 from MusicBot.helpers.youtube import search_youtube, download_audio
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+
+async def _ensure_assistant_in_group(m: Message) -> bool:
+    """
+    Check karo ki userbot (assistant) group me hai ya nahi.
+    Agar nahi hai to invite karo.
+    Returns True if assistant is now in the group, False if failed.
+    """
+    chat_id = m.chat.id
+
+    try:
+        # Check karo ki assistant group member hai
+        member = await app.get_chat_member(chat_id, userbot.me.id)
+        # Agar banned/kicked hai to error do
+        if member.status in (ChatMemberStatus.BANNED, ChatMemberStatus.RESTRICTED):
+            await m.reply_text(
+                "❌ **Assistant group me banned hai!**\n"
+                "Pehle assistant ko unban karo, phir `/play` try karo.",
+                quote=False,
+            )
+            return False
+        # Already member hai — sab theek
+        return True
+
+    except UserNotParticipant:
+        # Assistant group me nahi hai — invite karo
+        pass
+    except Exception:
+        # get_chat_member fail hua (e.g. bot ko member list access nahi)
+        # Assume assistant hai aur try karte hain
+        return True
+
+    # Invite karne ki koshish karo
+    try:
+        await m.reply_text(
+            f"⏳ **Assistant ko group me add kar raha hoon...**\n"
+            f"(Music bajane ke liye `@{userbot.me.username}` ka group me hona zaroori hai)",
+            quote=False,
+        )
+        await app.add_chat_members(chat_id, userbot.me.id)
+        logger.info(f"Assistant @{userbot.me.username} added to chat {chat_id}")
+        return True
+
+    except UserAlreadyParticipant:
+        return True
+
+    except ChatAdminRequired:
+        await m.reply_text(
+            f"❌ **Assistant group me nahi hai!**\n\n"
+            f"Bot ko admin banana padega taaki wo `@{userbot.me.username}` ko add kar sake.\n"
+            f"Ya manually `@{userbot.me.username}` ko group me add karo, phir `/play` try karo.",
+            quote=False,
+        )
+        return False
+
+    except PeerIdInvalid:
+        await m.reply_text(
+            f"❌ **Assistant `@{userbot.me.username}` ko add nahi kar paya.**\n"
+            f"Manually group me add karo: `@{userbot.me.username}`",
+            quote=False,
+        )
+        return False
+
+    except Exception as e:
+        logger.error(f"Failed to add assistant to {chat_id}: {e}")
+        await m.reply_text(
+            f"❌ **Assistant ko add karne me error aaya:** `{e}`\n\n"
+            f"Manually `@{userbot.me.username}` ko group me add karo, phir `/play` try karo.",
+            quote=False,
+        )
+        return False
 
 
 @app.on_message(filters.command("play") & filters.group)
@@ -30,6 +103,11 @@ async def play_cmd(_, m: Message):
 
     query = " ".join(m.command[1:])
     requester = m.from_user.mention if m.from_user else "Unknown"
+
+    # ── Step 1: Assistant group me hai ya nahi check karo ─────────────────
+    assistant_ok = await _ensure_assistant_in_group(m)
+    if not assistant_ok:
+        return  # Error message already send ho chuka
 
     status = await m.reply_text(f"🔍 Dhundh raha hoon: **{query}**...", quote=False)
 
