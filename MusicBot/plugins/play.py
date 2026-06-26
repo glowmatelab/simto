@@ -29,9 +29,9 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
             return False
         return True
     except UserNotParticipant:
-        pass
-    except Exception:
-        return True
+        pass  # Assistant nahi hai — neeche add karo
+    except Exception as e:
+        logger.warning(f"get_chat_member failed for {chat_id}: {e} — trying to add anyway")
 
     try:
         await m.reply_text(
@@ -39,32 +39,43 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
             quote=False,
             parse_mode=ParseMode.HTML,
         )
-        await app.add_chat_members(chat_id, userbot.me.id)
+        # ✅ FIX: app (bot) nahi, userbot (user account) se add karo
+        # Bots InviteToChannel use nahi kar sakte — sirf users kar sakte hain
+        await userbot.add_chat_members(chat_id, userbot.me.id)
         return True
     except UserAlreadyParticipant:
         return True
     except ChatAdminRequired:
         await m.reply_text(
-            f"❌ Make the bot an admin so it can add <code>@{userbot.me.username}</code>.",
+            f"❌ Assistant ko group mein add karne ka permission nahi.\n"
+            f"Manually add karo: <code>@{userbot.me.username}</code>",
             quote=False,
             parse_mode=ParseMode.HTML,
         )
         return False
     except PeerIdInvalid:
         await m.reply_text(
-            f"❌ Please add <code>@{userbot.me.username}</code> to the group manually.",
+            f"❌ Please manually add <code>@{userbot.me.username}</code> to the group.",
             quote=False,
             parse_mode=ParseMode.HTML,
         )
         return False
     except Exception as e:
-        logger.error(f"Failed to add assistant to {chat_id}: {e}")
-        await m.reply_text(
-            f"❌ Please add <code>@{userbot.me.username}</code> to the group manually.",
-            quote=False,
-            parse_mode=ParseMode.HTML,
-        )
-        return False
+        logger.warning(f"userbot.add_chat_members failed [{chat_id}]: {e} — trying invite link")
+        # Fallback: bot invite link banaye, userbot us se join kare
+        try:
+            invite_link = await app.create_chat_invite_link(chat_id)
+            await userbot.join_chat(invite_link.invite_link)
+            return True
+        except Exception as e2:
+            logger.error(f"Invite link join also failed [{chat_id}]: {e2}")
+            await m.reply_text(
+                f"❌ Assistant ko manually add karo: <code>@{userbot.me.username}</code>\n"
+                f"Reason: <code>{e}</code>",
+                quote=False,
+                parse_mode=ParseMode.HTML,
+            )
+            return False
 
 
 @app.on_message(filters.command("play") & filters.group)
