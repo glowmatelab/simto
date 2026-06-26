@@ -1,6 +1,5 @@
 """
 /start  /help  /ping
-Plain text only — no images, no thumbnails.
 """
 
 import time
@@ -8,34 +7,36 @@ import logging
 
 import psutil
 from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram.enums import ParseMode
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from MusicBot import app, db, call, boot_time
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-HELP_TEXT = """
-🎵 **MusicBot — Commands**
+# ── Replace with your actual image URLs ───────────────────────────────────────
+START_BANNER = "https://drive.google.com/uc?id=15mcuSKZX-1KaTMPhd_R0RT4gRZk_ZEEZ"
+HELP_BANNER  = "https://drive.google.com/uc?id=1Ta5EPBa1lg4silBXrwhUENso9eopwoE3"
 
-**Playback**
-`/play <song/link>` — YouTube se gaana bajao
-`/pause` — Pause karo
-`/resume` — Resume karo
-`/stop` or `/end` — Band karo aur VC chhor do
-`/restart` — Current song dobara suru karo
-`/loop` — Loop mode change karo (off → single → queue)
+BUTTONS = InlineKeyboardMarkup([
+    [
+        InlineKeyboardButton("➕ Add to Group", url="https://t.me/noisefreebot?startgroup=true"),
+        InlineKeyboardButton("📢 Updates", url="https://t.me/noisefreemusic"),
+    ]
+])
 
-**Info**
-`/queue` — Queue dekho (max {ql} songs)
-`/ping` — Bot ka status dekho
-`/help` — Yeh message
+HELP_TEXT = """<blockquote>🎵 <b>NoiseFree — Commands</b>
 
-**Notes**
-• Queue me max **{ql}** songs ek group me
-• Duration limit: **{dl} min** per song
-• Loop modes: off / single track / full queue
-""".strip()
+▸ /play &lt;song or link&gt;
+▸ /pause  ·  /resume
+▸ /stop  ·  /skip  ·  /restart
+▸ /loop — off → single → queue
+▸ /queue — view current queue
+▸ /ping — bot status
+
+⏱ Duration limit: {dl} min
+📋 Queue limit: {ql} songs per group</blockquote>"""
 
 
 def _human_time(seconds: int) -> str:
@@ -50,8 +51,6 @@ def _human_time(seconds: int) -> str:
     return " ".join(parts)
 
 
-# ── /start ────────────────────────────────────────────────────────────────────
-
 @app.on_message(filters.command("start"))
 async def start_cmd(_, m: Message):
     try:
@@ -60,22 +59,23 @@ async def start_cmd(_, m: Message):
         pass
 
     if m.chat.type.value == "private":
-        await m.reply_text(
-            f"👋 **MusicBot me aapka swagat hai!**\n\n"
-            f"Mujhe apne group me add karo aur `/play` se gaane bajao.\n\n"
-            + HELP_TEXT.format(ql=Config.QUEUE_LIMIT, dl=Config.DURATION_LIMIT // 60),
+        await m.reply_photo(
+            photo=START_BANNER,
+            caption=HELP_TEXT.format(ql=Config.QUEUE_LIMIT, dl=Config.DURATION_LIMIT // 60),
+            reply_markup=BUTTONS,
+            parse_mode=ParseMode.HTML,
             quote=False,
         )
     else:
-        # Register chat in DB
         await db.add_chat(m.chat.id)
-        await m.reply_text(
-            "✅ **MusicBot ready hai!**\nGaana bajane ke liye: `/play <song name>`",
+        await m.reply_photo(
+            photo=START_BANNER,
+            caption="<blockquote>✅ NoiseFree is ready!\n› Use /play to stream music.</blockquote>",
+            reply_markup=BUTTONS,
+            parse_mode=ParseMode.HTML,
             quote=False,
         )
 
-
-# ── /help ─────────────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command("help"))
 async def help_cmd(_, m: Message):
@@ -84,13 +84,14 @@ async def help_cmd(_, m: Message):
     except Exception:
         pass
 
-    await m.reply_text(
-        HELP_TEXT.format(ql=Config.QUEUE_LIMIT, dl=Config.DURATION_LIMIT // 60),
+    await m.reply_photo(
+        photo=HELP_BANNER,
+        caption=HELP_TEXT.format(ql=Config.QUEUE_LIMIT, dl=Config.DURATION_LIMIT // 60),
+        reply_markup=BUTTONS,
+        parse_mode=ParseMode.HTML,
         quote=False,
     )
 
-
-# ── /ping ─────────────────────────────────────────────────────────────────────
 
 @app.on_message(filters.command("ping"))
 async def ping_cmd(_, m: Message):
@@ -100,7 +101,7 @@ async def ping_cmd(_, m: Message):
         pass
 
     t_start = time.time()
-    sent = await m.reply_text("🏓 Ping...", quote=False)
+    sent = await m.reply_text("🏓 Pinging...", quote=False)
     latency = round((time.time() - t_start) * 1000, 1)
 
     uptime = _human_time(int(time.time() - boot_time))
@@ -108,7 +109,6 @@ async def ping_cmd(_, m: Message):
     mem = psutil.virtual_memory()
     ram = f"{mem.used / 1024**3:.1f}GB / {mem.total / 1024**3:.1f}GB"
     cpu = psutil.cpu_percent(interval=0.3)
-
     active_chats = len(await db.get_all_chats())
 
     try:
@@ -118,11 +118,12 @@ async def ping_cmd(_, m: Message):
         vc_text = "N/A"
 
     await sent.edit_text(
-        f"🏓 **Pong!**\n\n"
-        f"📡 Latency: `{latency} ms`\n"
-        f"📞 VC Ping: `{vc_text}`\n"
-        f"⏱ Uptime: `{uptime}`\n"
-        f"💾 RAM: `{ram}`\n"
-        f"🖥 CPU: `{cpu}%`\n"
-        f"🎵 Active Groups: `{active_chats}`"
+        f"<blockquote>🏓 Pong!\n\n"
+        f"📡 Latency: <code>{latency} ms</code>\n"
+        f"📞 VC Ping: <code>{vc_text}</code>\n"
+        f"⏱ Uptime: <code>{uptime}</code>\n"
+        f"💾 RAM: <code>{ram}</code>\n"
+        f"🖥 CPU: <code>{cpu}%</code>\n"
+        f"🎵 Active Groups: <code>{active_chats}</code></blockquote>",
+        parse_mode=ParseMode.HTML,
     )
