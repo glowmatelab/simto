@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 class CallManager:
     def __init__(self):
         self._client: PyTgCalls | None = None
+        self._prefetch_tasks: dict[int, asyncio.Task] = {}
 
     def setup(self, userbot):
         self._client = PyTgCalls(userbot)
@@ -34,9 +35,33 @@ class CallManager:
             raise RuntimeError("CallManager.setup() not called yet.")
         return self._client
 
+    async def _prefetch_next(self, chat_id: int):
+        """Background mein next song download karo taaki stream end pe gap na aaye."""
+        from MusicBot import queue
+        from MusicBot.helpers.youtube import download_audio
+
+        await asyncio.sleep(5)  # thoda wait karo pehle
+        next_song = queue.peek_next(chat_id)
+        if next_song and not next_song.file_path:
+            logger.info(f"Prefetching next song: {next_song.title}")
+            next_song.file_path = await download_audio(next_song) or ""
+
+    def _start_prefetch(self, chat_id: int):
+        """Purana prefetch cancel karo, naya start karo."""
+        old = self._prefetch_tasks.pop(chat_id, None)
+        if old and not old.done():
+            old.cancel()
+        task = asyncio.create_task(self._prefetch_next(chat_id))
+        self._prefetch_tasks[chat_id] = task
+
     async def _handle_stream_end(self, chat_id: int):
         from MusicBot import db, queue, app
         from MusicBot.helpers.youtube import download_audio, cleanup_downloads
+
+        # Prefetch task cancel karo agar chal raha ho
+        old = self._prefetch_tasks.pop(chat_id, None)
+        if old and not old.done():
+            old.cancel()
 
         loop_mode = await db.get_loop(chat_id)
 
@@ -44,6 +69,7 @@ class CallManager:
             song = queue.current(chat_id)
             if song:
                 await self._change_stream(chat_id, song.file_path)
+                self._start_prefetch(chat_id)
                 return
 
         elif loop_mode == 2:
@@ -54,6 +80,7 @@ class CallManager:
                     song.file_path = await download_audio(song) or ""
                 if song.file_path:
                     await self._change_stream(chat_id, song.file_path)
+                    self._start_prefetch(chat_id)
                     return
 
         next_song = queue.next_song(chat_id)
@@ -92,6 +119,9 @@ class CallManager:
 
         await self._change_stream(chat_id, next_song.file_path)
 
+        # Next-next song prefetch start karo background mein
+        self._start_prefetch(chat_id)
+
         active_ids = [s.id for s in queue.all_songs(chat_id)]
         cleanup_downloads(keep_current_ids=active_ids)
 
@@ -116,11 +146,13 @@ class CallManager:
         try:
             stream = MediaStream(
                 song.file_path,
-                audio_parameters=AudioQuality.STUDIO,
+                audio_parameters=AudioQuality.HIGH,
                 video_flags=MediaStream.Flags.IGNORE,
             )
             await self.client.play(chat_id, stream)
             await db.set_call(chat_id, userbot.me.id)
+            # Pehla song play hote hi next prefetch shuru
+            self._start_prefetch(chat_id)
             return True
         except Exception as e:
             logger.error(f"Play error [{chat_id}]: {e}")
@@ -131,7 +163,7 @@ class CallManager:
             chat_id,
             MediaStream(
                 file_path,
-                audio_parameters=AudioQuality.STUDIO,
+                audio_parameters=AudioQuality.HIGH,
                 video_flags=MediaStream.Flags.IGNORE,
             ),
         )
@@ -153,6 +185,11 @@ class CallManager:
     async def stop(self, chat_id: int) -> bool:
         from MusicBot import db, queue
         from MusicBot.helpers.youtube import cleanup_downloads
+
+        # Stop pe prefetch cancel karo
+        old = self._prefetch_tasks.pop(chat_id, None)
+        if old and not old.done():
+            old.cancel()
 
         queue.clear(chat_id)
         await db.remove_call(chat_id)
