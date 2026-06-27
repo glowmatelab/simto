@@ -29,7 +29,7 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
             return False
         return True
     except UserNotParticipant:
-        pass  # Assistant nahi hai — neeche add karo
+        pass
     except Exception as e:
         logger.warning(f"get_chat_member failed for {chat_id}: {e} — trying to add anyway")
 
@@ -60,7 +60,6 @@ async def _ensure_assistant_in_group(m: Message) -> bool:
         return False
     except Exception as e:
         logger.warning(f"userbot.add_chat_members failed [{chat_id}]: {e} — trying invite link")
-        # Fallback: bot invite link banaye, userbot us se join kare
         try:
             invite_link = await app.create_chat_invite_link(chat_id)
             await userbot.join_chat(invite_link.invite_link)
@@ -96,6 +95,11 @@ async def play_cmd(_, m: Message):
     assistant_ok = await _ensure_assistant_in_group(m)
     if not assistant_ok:
         return
+
+    # Save user + group to DB
+    if m.from_user:
+        await db.add_user(m.from_user.id)
+    await db.add_chat(m.chat.id)
 
     status = await m.reply_text(
         f"🔍 <blockquote>{query}</blockquote>",
