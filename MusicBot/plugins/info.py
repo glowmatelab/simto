@@ -29,9 +29,9 @@ START_TEXT = """<blockquote>🎵 <b>Welcome to NoiseFree Music</b>
 The simplest, no-nonsense music bot on Telegram. Built purely for high-quality audio without any clutter or forced ads.
 
 ✨ <b>Why Choose Us?</b>
-• <b>Pure Sound:</b> Crystal clear, lag-free streaming.
-• <b>Zero Trash:</b> No complex setups or promotional spam.
-• <b>Lightweight:</b> Ultra-fast and highly responsive.
+- <b>Pure Sound:</b> Crystal clear, lag-free streaming.
+- <b>Zero Trash:</b> No complex setups or promotional spam.
+- <b>Lightweight:</b> Ultra-fast and highly responsive.
 
 › Type <b>/help</b> to view the control layout.</blockquote>"""
 
@@ -73,6 +73,7 @@ async def start_cmd(_, m: Message):
         pass
 
     if m.chat.type.value == "private":
+        await db.add_user(m.from_user.id)
         await m.reply_photo(
             photo=START_BANNER,
             caption=START_TEXT,
